@@ -1,5 +1,5 @@
 # import flask and render template
-from flask import Flask, render_template
+from flask import Flask, render_template, request, redirect
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 
@@ -20,10 +20,52 @@ class Grocery(db.Model):
         return '<Grocery %r>' % self.name
 
 # specify url --> localhost:5000
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    # return the index.html template
-    return render_template('index.html')
+    if request.method == 'POST':
+        name = request.form['name']
+        new_stuff = Grocery(name=name)
+
+        try:
+            db.session.add(new_stuff)
+            db.session.commit()
+            return redirect('/')
+        except:
+            return "There was a problem adding new stuff."
+
+    else:
+        groceries = Grocery.query.order_by(Grocery.created_at).all()
+        return render_template('index.html', groceries=groceries)
+
+
+@app.route('/delete/<int:id>')
+def delete(id):
+    grocery = Grocery.query.get_or_404(id)
+
+    try:
+        db.session.delete(grocery)
+        db.session.commit()
+        return redirect('/')
+    except:
+        return "There was a problem deleting data."
+
+
+@app.route('/update/<int:id>', methods=['GET', 'POST'])
+def update(id):
+    grocery = Grocery.query.get_or_404(id)
+
+    if request.method == 'POST':
+        grocery.name = request.form['name']
+
+        try:
+            db.session.commit()
+            return redirect('/')
+        except:
+            return "There was a problem updating data."
+
+    else:
+        title = "Update Data"
+        return render_template('update.html', title=title, grocery=grocery)
 
 
 if __name__ == '__main__':
